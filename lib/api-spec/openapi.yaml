@@ -10,6 +10,8 @@ servers:
 tags:
   - name: health
     description: Health operations
+  - name: khata
+    description: Customer ledgers and shop summaries
 paths:
   /healthz:
     get:
@@ -24,6 +26,123 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /khata/dashboard:
+    get:
+      operationId: getKhataDashboard
+      tags: [khata]
+      summary: Get shop ledger overview
+      responses:
+        "200":
+          description: Dashboard totals and latest ledger activity
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/KhataDashboard"
+  /customers:
+    get:
+      operationId: getCustomers
+      tags: [khata]
+      summary: List customers and their current balances
+      parameters:
+        - name: search
+          in: query
+          required: false
+          schema:
+            type: string
+            maxLength: 120
+      responses:
+        "200":
+          description: Customers matching the search query
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Customer"
+    post:
+      operationId: createCustomer
+      tags: [khata]
+      summary: Create a customer account
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CustomerInput"
+      responses:
+        "201":
+          description: Created customer
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Customer"
+  /customers/{customerId}:
+    parameters:
+      - name: customerId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      operationId: getCustomer
+      tags: [khata]
+      summary: Get a customer account and its ledger entries
+      responses:
+        "200":
+          description: Customer account and transaction history
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CustomerLedger"
+        "404":
+          description: Customer not found
+    patch:
+      operationId: updateCustomer
+      tags: [khata]
+      summary: Update a customer account
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CustomerUpdate"
+      responses:
+        "200":
+          description: Updated customer
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Customer"
+        "404":
+          description: Customer not found
+  /customers/{customerId}/transactions:
+    parameters:
+      - name: customerId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    post:
+      operationId: createCustomerTransaction
+      tags: [khata]
+      summary: Record credit or payment for a customer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TransactionInput"
+      responses:
+        "201":
+          description: Created ledger transaction
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Transaction"
+        "404":
+          description: Customer not found
 components:
   schemas:
     HealthStatus:
@@ -33,4 +152,107 @@ components:
           type: string
       required:
         - status
+    CustomerInput:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 120
+        phone:
+          type: ["string", "null"]
+          maxLength: 40
+      required: [name]
+    CustomerUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 120
+        phone:
+          type: ["string", "null"]
+          maxLength: 40
+    Customer:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        phone:
+          type: ["string", "null"]
+        balancePaisa:
+          type: integer
+        transactionCount:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+        lastActivityAt:
+          type: ["string", "null"]
+          format: date-time
+      required: [id, name, phone, balancePaisa, transactionCount, createdAt, lastActivityAt]
+    TransactionInput:
+      type: object
+      properties:
+        type:
+          type: string
+          enum: [credit, payment]
+        amountPaisa:
+          type: integer
+          minimum: 1
+        note:
+          type: ["string", "null"]
+          maxLength: 500
+      required: [type, amountPaisa]
+    Transaction:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        customerId:
+          type: string
+          format: uuid
+        customerName:
+          type: string
+        type:
+          type: string
+          enum: [credit, payment]
+        amountPaisa:
+          type: integer
+        note:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, customerId, customerName, type, amountPaisa, note, createdAt]
+    CustomerLedger:
+      type: object
+      properties:
+        customer:
+          $ref: "#/components/schemas/Customer"
+        transactions:
+          type: array
+          items:
+            $ref: "#/components/schemas/Transaction"
+      required: [customer, transactions]
+    KhataDashboard:
+      type: object
+      properties:
+        customerCount:
+          type: integer
+        totalReceivablePaisa:
+          type: integer
+        todayCreditPaisa:
+          type: integer
+        todayPaymentPaisa:
+          type: integer
+        recentTransactions:
+          type: array
+          items:
+            $ref: "#/components/schemas/Transaction"
+      required: [customerCount, totalReceivablePaisa, todayCreditPaisa, todayPaymentPaisa, recentTransactions]
 

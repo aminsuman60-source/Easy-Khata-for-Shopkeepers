@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/easy-khata/"
+title = "Easy Khata"
+description = "A simple mobile-first digital ledger for shopkeepers and small businesses. Manage customer accounts, record credit and payments, see outstanding balances, search customers, and review today's activity."
+version = "1.0.0"
+id = "artifacts/easy-khata"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/easy-khata/" ]
+localPort = 24990
+
+[services.development]
+run = "pnpm --filter @workspace/easy-khata run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/easy-khata", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/easy-khata/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "24990"
+BASE_PATH = "/easy-khata/"
